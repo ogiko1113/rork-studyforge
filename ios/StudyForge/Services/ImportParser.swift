@@ -42,9 +42,16 @@ nonisolated enum ImportParser {
         var fields: [String] = []
         var current = ""
         var inQuotes = false
-
-        for char in line {
+        let chars = Array(line)
+        var i = 0
+        while i < chars.count {
+            let char = chars[i]
             if char == "\"" {
+                if inQuotes, i + 1 < chars.count, chars[i + 1] == "\"" {
+                    current.append("\"")
+                    i += 2
+                    continue
+                }
                 inQuotes.toggle()
             } else if char == "," && !inQuotes {
                 fields.append(current)
@@ -52,6 +59,7 @@ nonisolated enum ImportParser {
             } else {
                 current.append(char)
             }
+            i += 1
         }
         fields.append(current)
 

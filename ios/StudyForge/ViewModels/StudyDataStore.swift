@@ -3,6 +3,8 @@ import SwiftUI
 @Observable
 @MainActor
 class StudyDataStore {
+    private static let masteredThreshold = 5
+
     var cards: [Card] = []
     var reviewLogs: [ReviewLog] = []
 
@@ -130,11 +132,11 @@ class StudyDataStore {
     }
 
     var masteredCount: Int {
-        cards.filter { $0.repetitions >= 5 }.count
+        cards.filter { $0.repetitions >= Self.masteredThreshold }.count
     }
 
     var learningCount: Int {
-        cards.filter { $0.repetitions > 0 && $0.repetitions < 5 }.count
+        cards.filter { $0.repetitions > 0 && $0.repetitions < Self.masteredThreshold }.count
     }
 
     var averageEF: Double? {
@@ -168,8 +170,8 @@ class StudyDataStore {
             DeckProgress(
                 name: deck,
                 newCount: deckCards.filter { $0.repetitions == 0 }.count,
-                learningCount: deckCards.filter { $0.repetitions > 0 && $0.repetitions < 5 }.count,
-                masteredCount: deckCards.filter { $0.repetitions >= 5 }.count
+                learningCount: deckCards.filter { $0.repetitions > 0 && $0.repetitions < Self.masteredThreshold }.count,
+                masteredCount: deckCards.filter { $0.repetitions >= Self.masteredThreshold }.count
             )
         }
         .sorted { $0.name < $1.name }

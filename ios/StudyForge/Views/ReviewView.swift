@@ -39,7 +39,11 @@ struct ReviewView: View {
             .background(Color(.systemGroupedBackground))
             .navigationTitle("復習")
             .navigationBarTitleDisplayMode(.inline)
-            .onAppear { startSession() }
+            .onAppear {
+                if !sessionStarted {
+                    startSession()
+                }
+            }
             .onChange(of: selectedDeck) { _, _ in startSession() }
         }
     }

@@ -32,6 +32,7 @@ struct DeckDetailView: View {
                 .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                     Button(role: .destructive) {
                         withAnimation { store.deleteCard(card) }
+                        toastMessage = "カードを削除しました"
                     } label: {
                         Label("削除", systemImage: "trash")
                     }

@@ -13,7 +13,7 @@ struct ReviewGradeButton: View {
                     .font(.caption.weight(.bold))
                     .foregroundStyle(.white)
                 Text(subtitle)
-                    .font(.system(size: 9))
+                    .font(.caption2)
                     .foregroundStyle(.white.opacity(0.8))
             }
             .frame(maxWidth: .infinity)

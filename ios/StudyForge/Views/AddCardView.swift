@@ -205,7 +205,7 @@ struct AddCardView: View {
         toastMessage = "カードを追加しました"
         frontFocused = true
 
-        if selectedDeck.isEmpty {
+        if !newDeckName.trimmingCharacters(in: .whitespaces).isEmpty {
             selectedDeck = effectiveDeck
             newDeckName = ""
         }
@@ -218,7 +218,7 @@ struct AddCardView: View {
         toastMessage = "\(cards.count)件のカードを追加しました"
         bulkText = ""
 
-        if selectedDeck.isEmpty {
+        if !newDeckName.trimmingCharacters(in: .whitespaces).isEmpty {
             selectedDeck = effectiveDeck
             newDeckName = ""
         }
