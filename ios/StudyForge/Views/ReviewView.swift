@@ -129,19 +129,19 @@ struct ReviewView: View {
                 ) { gradeCard(grade: 1) }
 
                 ReviewGradeButton(
-                    label: "難しい",
+                    label: "うろ覚え",
                     subtitle: DateHelper.formatRelativeDay(SM2.simulateInterval(card: card, grade: 3)),
                     color: AppColors.gradeHard
                 ) { gradeCard(grade: 3) }
 
                 ReviewGradeButton(
-                    label: "普通",
+                    label: "覚えた",
                     subtitle: DateHelper.formatRelativeDay(SM2.simulateInterval(card: card, grade: 4)),
                     color: AppColors.gradeGood
                 ) { gradeCard(grade: 4) }
 
                 ReviewGradeButton(
-                    label: "簡単",
+                    label: "完璧",
                     subtitle: DateHelper.formatRelativeDay(SM2.simulateInterval(card: card, grade: 5)),
                     color: AppColors.gradeEasy
                 ) { gradeCard(grade: 5) }
