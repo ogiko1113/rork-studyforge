@@ -1,9 +1,15 @@
 import SwiftUI
 
-struct BarData: Identifiable {
-    let id = UUID()
+nonisolated struct BarData: Identifiable, Sendable {
+    let id: String
     let label: String
     let value: Int
+
+    init(label: String, value: Int) {
+        self.id = label
+        self.label = label
+        self.value = value
+    }
 }
 
 struct SimpleBarChart: View {
