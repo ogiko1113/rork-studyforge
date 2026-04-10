@@ -3,13 +3,19 @@ import SwiftUI
 struct ReviewView: View {
     @Environment(StudyDataStore.self) private var store
     @State private var selectedDeck: String? = nil
-    @State private var sessionCards: [Card] = []
+    @State private var sessionCardIds: [String] = []
     @State private var currentIndex: Int = 0
     @State private var isFlipped = false
     @State private var reviewedCount: Int = 0
     @State private var successCount: Int = 0
     @State private var sessionFinished = false
     @State private var sessionStarted = false
+
+    private var sessionCards: [Card] {
+        sessionCardIds.compactMap { id in
+            store.cards.first(where: { $0.id == id })
+        }
+    }
 
     private var totalDue: Int {
         sessionCards.count
@@ -150,12 +156,20 @@ struct ReviewView: View {
     }
 
     private func gradeCard(grade: Int) {
+        normalizeSession()
         guard let card = currentCard else { return }
-        store.reviewCard(card, grade: grade)
+
+        let saved = store.reviewCard(card, grade: grade)
+        guard saved else {
+            normalizeSession()
+            return
+        }
+
         reviewedCount += 1
         if grade >= 3 { successCount += 1 }
 
         isFlipped = false
+        normalizeSession()
 
         if currentIndex + 1 >= totalDue {
             withAnimation { sessionFinished = true }
@@ -235,12 +249,19 @@ struct ReviewView: View {
     }
 
     private func startSession() {
-        sessionCards = store.dueCards(for: selectedDeck)
+        sessionCardIds = store.dueCards(for: selectedDeck).map(\.id)
         currentIndex = 0
         isFlipped = false
         reviewedCount = 0
         successCount = 0
         sessionFinished = false
         sessionStarted = true
+    }
+
+    private func normalizeSession() {
+        sessionCardIds = sessionCards.map(\.id)
+        if currentIndex >= sessionCardIds.count {
+            currentIndex = max(0, sessionCardIds.count - 1)
+        }
     }
 }
