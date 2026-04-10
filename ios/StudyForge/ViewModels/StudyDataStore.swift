@@ -5,10 +5,12 @@ import SwiftUI
 class StudyDataStore {
     var cards: [Card] = []
     var reviewLogs: [ReviewLog] = []
+    var courses: [Course] = []
 
     init() {
         cards = StorageService.loadCards()
         reviewLogs = StorageService.loadReviewLogs()
+        courses = StorageService.loadCourses()
     }
 
     var deckNames: [String] {
@@ -175,11 +177,104 @@ class StudyDataStore {
         .sorted { $0.name < $1.name }
     }
 
+    // MARK: - Course Management
+
+    var assignedDeckNames: Set<String> {
+        Set(courses.flatMap(\.deckNames))
+    }
+
+    var ungroupedDecks: [DeckInfo] {
+        let assigned = assignedDeckNames
+        return sortedDecks.filter { !assigned.contains($0.name) }
+    }
+
+    struct CourseInfo: Identifiable {
+        let course: Course
+        let deckCount: Int
+        let totalDue: Int
+        let totalCards: Int
+        var id: String { course.id }
+    }
+
+    var sortedCourses: [CourseInfo] {
+        let now = DateHelper.nowMillis()
+        return courses.map { course in
+            let courseCards = cards.filter { course.deckNames.contains($0.deck) }
+            let due = courseCards.filter { $0.nextReview <= now }.count
+            return CourseInfo(
+                course: course,
+                deckCount: course.deckNames.count,
+                totalDue: due,
+                totalCards: courseCards.count
+            )
+        }
+        .sorted { a, b in
+            if a.totalDue != b.totalDue { return a.totalDue > b.totalDue }
+            return a.course.name < b.course.name
+        }
+    }
+
+    func decksForCourse(_ course: Course) -> [DeckInfo] {
+        let now = DateHelper.nowMillis()
+        let grouped = Dictionary(grouping: cards, by: \.deck)
+        return course.deckNames.compactMap { deckName in
+            let deckCards = grouped[deckName] ?? []
+            let due = deckCards.filter { $0.nextReview <= now }.count
+            return DeckInfo(name: deckName, cardCount: deckCards.count, dueCount: due)
+        }
+    }
+
+    func addCourse(name: String) {
+        guard !name.trimmingCharacters(in: .whitespaces).isEmpty else { return }
+        let trimmed = name.trimmingCharacters(in: .whitespaces)
+        guard !courses.contains(where: { $0.name == trimmed }) else { return }
+        let course = Course(name: trimmed)
+        courses.append(course)
+        saveCourses()
+    }
+
+    func deleteCourse(_ course: Course) {
+        courses.removeAll { $0.id == course.id }
+        saveCourses()
+    }
+
+    func renameCourse(_ course: Course, to newName: String) {
+        let trimmed = newName.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else { return }
+        guard !courses.contains(where: { $0.name == trimmed && $0.id != course.id }) else { return }
+        guard let index = courses.firstIndex(where: { $0.id == course.id }) else { return }
+        courses[index].name = trimmed
+        saveCourses()
+    }
+
+    func addDeckToCourse(_ deckName: String, courseId: String) {
+        for i in courses.indices {
+            courses[i].deckNames.removeAll { $0 == deckName }
+        }
+        guard let index = courses.firstIndex(where: { $0.id == courseId }) else { return }
+        courses[index].deckNames.append(deckName)
+        saveCourses()
+    }
+
+    func removeDeckFromCourse(_ deckName: String, courseId: String) {
+        guard let index = courses.firstIndex(where: { $0.id == courseId }) else { return }
+        courses[index].deckNames.removeAll { $0 == deckName }
+        saveCourses()
+    }
+
+    func courseForDeck(_ deckName: String) -> Course? {
+        courses.first { $0.deckNames.contains(deckName) }
+    }
+
     private func saveCards() {
         StorageService.saveCards(cards)
     }
 
     private func saveLogs() {
         StorageService.saveReviewLogs(reviewLogs)
+    }
+
+    private func saveCourses() {
+        StorageService.saveCourses(courses)
     }
 }

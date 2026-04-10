@@ -5,6 +5,7 @@ struct AddCardView: View {
     @State private var mode: Int = 0
     @State private var selectedDeck: String = ""
     @State private var newDeckName: String = ""
+    @State private var selectedCourseId: String = ""
     @State private var front: String = ""
     @State private var back: String = ""
     @State private var bulkText: String = ""
@@ -15,6 +16,11 @@ struct AddCardView: View {
         let trimmed = newDeckName.trimmingCharacters(in: .whitespaces)
         if !trimmed.isEmpty { return trimmed }
         return selectedDeck
+    }
+
+    private var isNewDeck: Bool {
+        let trimmed = newDeckName.trimmingCharacters(in: .whitespaces)
+        return !trimmed.isEmpty && !store.deckNames.contains(trimmed)
     }
 
     private var parsedCards: [ParsedCard] {
@@ -73,6 +79,49 @@ struct AddCardView: View {
 
             TextField("新しいデッキ名", text: $newDeckName)
                 .textFieldStyle(.roundedBorder)
+
+            if isNewDeck && !store.courses.isEmpty {
+                coursePickerSection
+            }
+        }
+    }
+
+    private var coursePickerSection: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("コースに追加（任意）")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    Button {
+                        selectedCourseId = ""
+                    } label: {
+                        Text("なし")
+                            .font(.caption.weight(.medium))
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 8)
+                            .background(selectedCourseId.isEmpty ? AppColors.accent.opacity(0.15) : Color(.tertiarySystemGroupedBackground))
+                            .foregroundStyle(selectedCourseId.isEmpty ? AppColors.accent : .secondary)
+                            .clipShape(.capsule)
+                    }
+
+                    ForEach(store.courses) { course in
+                        Button {
+                            selectedCourseId = course.id
+                        } label: {
+                            Text(course.name)
+                                .font(.caption.weight(.medium))
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 8)
+                                .background(selectedCourseId == course.id ? AppColors.accent.opacity(0.15) : Color(.tertiarySystemGroupedBackground))
+                                .foregroundStyle(selectedCourseId == course.id ? AppColors.accent : .secondary)
+                                .clipShape(.capsule)
+                        }
+                    }
+                }
+            }
+            .contentMargins(.horizontal, 0)
         }
     }
 
@@ -199,28 +248,44 @@ struct AddCardView: View {
         let trimBack = back.trimmingCharacters(in: .whitespaces)
         guard !trimFront.isEmpty, !trimBack.isEmpty, !effectiveDeck.isEmpty else { return }
 
-        store.addCard(front: trimFront, back: trimBack, deck: effectiveDeck)
+        let deckName = effectiveDeck
+        let wasNew = isNewDeck
+        store.addCard(front: trimFront, back: trimBack, deck: deckName)
+
+        if wasNew && !selectedCourseId.isEmpty {
+            store.addDeckToCourse(deckName, courseId: selectedCourseId)
+        }
+
         front = ""
         back = ""
         toastMessage = "カードを追加しました"
         frontFocused = true
 
         if selectedDeck.isEmpty {
-            selectedDeck = effectiveDeck
+            selectedDeck = deckName
             newDeckName = ""
+            selectedCourseId = ""
         }
     }
 
     private func addBulkCards() {
         guard !parsedCards.isEmpty, !effectiveDeck.isEmpty else { return }
+        let deckName = effectiveDeck
+        let wasNew = isNewDeck
         let cards = parsedCards.map { (front: $0.front, back: $0.back) }
-        store.addCards(cards, deck: effectiveDeck)
+        store.addCards(cards, deck: deckName)
+
+        if wasNew && !selectedCourseId.isEmpty {
+            store.addDeckToCourse(deckName, courseId: selectedCourseId)
+        }
+
         toastMessage = "\(cards.count)件のカードを追加しました"
         bulkText = ""
 
         if selectedDeck.isEmpty {
-            selectedDeck = effectiveDeck
+            selectedDeck = deckName
             newDeckName = ""
+            selectedCourseId = ""
         }
     }
 }

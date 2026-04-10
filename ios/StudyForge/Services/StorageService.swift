@@ -3,6 +3,7 @@ import Foundation
 nonisolated enum StorageKeys {
     static let cards = "studyforge_cards"
     static let reviewLogs = "studyforge_review_logs"
+    static let courses = "studyforge_courses"
 }
 
 @MainActor
@@ -29,5 +30,15 @@ enum StorageService {
     static func saveReviewLogs(_ logs: [ReviewLog]) {
         guard let data = try? encoder.encode(logs) else { return }
         defaults.set(data, forKey: StorageKeys.reviewLogs)
+    }
+
+    static func loadCourses() -> [Course] {
+        guard let data = defaults.data(forKey: StorageKeys.courses) else { return [] }
+        return (try? decoder.decode([Course].self, from: data)) ?? []
+    }
+
+    static func saveCourses(_ courses: [Course]) {
+        guard let data = try? encoder.encode(courses) else { return }
+        defaults.set(data, forKey: StorageKeys.courses)
     }
 }
