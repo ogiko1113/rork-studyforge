@@ -4,7 +4,6 @@ struct DeckDetailView: View {
     @Environment(StudyDataStore.self) private var store
     let deckName: String
     @State private var editingCard: Card?
-    @State private var toastMessage: String?
 
     private var deckCards: [Card] {
         store.cardsForDeck(deckName)
@@ -52,7 +51,6 @@ struct DeckDetailView: View {
         .sheet(item: $editingCard) { card in
             CardEditSheet(card: card)
         }
-        .toast(message: $toastMessage)
     }
 }
 

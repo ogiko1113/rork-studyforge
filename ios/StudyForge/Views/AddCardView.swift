@@ -205,10 +205,8 @@ struct AddCardView: View {
         toastMessage = "カードを追加しました"
         frontFocused = true
 
-        if selectedDeck.isEmpty {
-            selectedDeck = effectiveDeck
-            newDeckName = ""
-        }
+        selectedDeck = effectiveDeck
+        newDeckName = ""
     }
 
     private func addBulkCards() {
@@ -218,9 +216,7 @@ struct AddCardView: View {
         toastMessage = "\(cards.count)件のカードを追加しました"
         bulkText = ""
 
-        if selectedDeck.isEmpty {
-            selectedDeck = effectiveDeck
-            newDeckName = ""
-        }
+        selectedDeck = effectiveDeck
+        newDeckName = ""
     }
 }

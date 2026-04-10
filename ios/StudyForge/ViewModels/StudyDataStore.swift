@@ -96,11 +96,13 @@ class StudyDataStore {
         saveLogs()
     }
 
-    func reviewCard(_ card: Card, grade: Int) {
+    func reviewCard(_ card: Card, grade: Int) -> Bool {
         let now = DateHelper.nowMillis()
         let result = SM2.calculate(card: card, grade: grade, now: now)
 
-        guard let index = cards.firstIndex(where: { $0.id == card.id }) else { return }
+        guard let index = cards.firstIndex(where: { $0.id == card.id }) else { return false }
+        let previousCard = cards[index]
+
         cards[index].ef = result.ef
         cards[index].interval = result.interval
         cards[index].repetitions = result.repetitions
@@ -117,8 +119,15 @@ class StudyDataStore {
         )
         reviewLogs.append(log)
 
-        saveCards()
-        saveLogs()
+        let cardsSaved = saveCards()
+        let logsSaved = saveLogs()
+        guard cardsSaved && logsSaved else {
+            cards[index] = previousCard
+            _ = reviewLogs.popLast()
+            return false
+        }
+
+        return true
     }
 
     var totalCards: Int { cards.count }
@@ -175,11 +184,13 @@ class StudyDataStore {
         .sorted { $0.name < $1.name }
     }
 
-    private func saveCards() {
+    @discardableResult
+    private func saveCards() -> Bool {
         StorageService.saveCards(cards)
     }
 
-    private func saveLogs() {
+    @discardableResult
+    private func saveLogs() -> Bool {
         StorageService.saveReviewLogs(reviewLogs)
     }
 }

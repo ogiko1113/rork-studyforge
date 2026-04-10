@@ -42,19 +42,34 @@ nonisolated enum ImportParser {
         var fields: [String] = []
         var current = ""
         var inQuotes = false
+        var index = line.startIndex
 
-        for char in line {
+        while index < line.endIndex {
+            let char = line[index]
+
             if char == "\"" {
+                let nextIndex = line.index(after: index)
+                if inQuotes, nextIndex < line.endIndex, line[nextIndex] == "\"" {
+                    current.append("\"")
+                    index = line.index(after: nextIndex)
+                    continue
+                }
                 inQuotes.toggle()
-            } else if char == "," && !inQuotes {
+                index = nextIndex
+                continue
+            }
+
+            if char == "," && !inQuotes {
                 fields.append(current)
                 current = ""
             } else {
                 current.append(char)
             }
-        }
-        fields.append(current)
 
+            index = line.index(after: index)
+        }
+
+        fields.append(current)
         return fields
     }
 }
