@@ -89,7 +89,8 @@ struct CardEditSheet: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("保存") {
-                        store.updateCard(card, front: front, back: back, deck: card.deck)
+                        store.updateCard(card, front: front, back: back, deck: card.deck,
+                                         imageFront: card.imageFront, imageBack: card.imageBack)
                         dismiss()
                     }
                     .disabled(front.trimmingCharacters(in: .whitespaces).isEmpty || back.trimmingCharacters(in: .whitespaces).isEmpty)

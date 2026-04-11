@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct ReviewView: View {
     @Environment(StudyDataStore.self) private var store
@@ -10,6 +11,8 @@ struct ReviewView: View {
     @State private var successCount: Int = 0
     @State private var sessionFinished = false
     @State private var sessionStarted = false
+    @State private var currentFrontImage: UIImage?
+    @State private var currentBackImage: UIImage?
 
     private var totalDue: Int {
         sessionCards.count
@@ -101,6 +104,8 @@ struct ReviewView: View {
                 FlashcardFlipView(
                     frontText: card.front,
                     backText: card.back,
+                    frontImage: currentFrontImage,
+                    backImage: currentBackImage,
                     isFlipped: $isFlipped
                 )
             }
@@ -161,7 +166,18 @@ struct ReviewView: View {
             withAnimation { sessionFinished = true }
         } else {
             currentIndex += 1
+            loadCurrentImages()
         }
+    }
+
+    private func loadCurrentImages() {
+        guard let card = currentCard else {
+            currentFrontImage = nil
+            currentBackImage = nil
+            return
+        }
+        currentFrontImage = card.imageFront.flatMap { ImageStorageService.loadImage(filename: $0) }
+        currentBackImage = card.imageBack.flatMap { ImageStorageService.loadImage(filename: $0) }
     }
 
     private var completionView: some View {
@@ -242,5 +258,6 @@ struct ReviewView: View {
         successCount = 0
         sessionFinished = false
         sessionStarted = true
+        loadCurrentImages()
     }
 }

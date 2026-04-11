@@ -12,6 +12,8 @@ nonisolated struct Card: Codable, Identifiable, Sendable, Hashable {
     var lastReview: Double
     var grade: Int
     var created: Double
+    var imageFront: String?
+    var imageBack: String?
 
     init(
         id: String = UUID().uuidString,
@@ -24,7 +26,9 @@ nonisolated struct Card: Codable, Identifiable, Sendable, Hashable {
         nextReview: Double? = nil,
         lastReview: Double = 0,
         grade: Int = 0,
-        created: Double? = nil
+        created: Double? = nil,
+        imageFront: String? = nil,
+        imageBack: String? = nil
     ) {
         self.id = id
         self.front = front
@@ -38,5 +42,7 @@ nonisolated struct Card: Codable, Identifiable, Sendable, Hashable {
         self.lastReview = lastReview
         self.grade = grade
         self.created = now
+        self.imageFront = imageFront
+        self.imageBack = imageBack
     }
 }

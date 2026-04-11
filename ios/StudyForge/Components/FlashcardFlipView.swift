@@ -1,24 +1,27 @@
 import SwiftUI
+import UIKit
 
 struct FlashcardFlipView: View {
     let frontText: String
     let backText: String
+    var frontImage: UIImage? = nil
+    var backImage: UIImage? = nil
     @Binding var isFlipped: Bool
 
     var body: some View {
         ZStack {
-            cardFace(text: frontText, label: "問題")
+            cardFace(text: frontText, image: frontImage, label: "問題")
                 .rotation3DEffect(.degrees(isFlipped ? 180 : 0), axis: (x: 0, y: 1, z: 0))
                 .opacity(isFlipped ? 0 : 1)
 
-            cardFace(text: backText, label: "答え")
+            cardFace(text: backText, image: backImage, label: "答え")
                 .rotation3DEffect(.degrees(isFlipped ? 0 : -180), axis: (x: 0, y: 1, z: 0))
                 .opacity(isFlipped ? 1 : 0)
         }
         .animation(.spring(response: 0.5, dampingFraction: 0.8), value: isFlipped)
     }
 
-    private func cardFace(text: String, label: String) -> some View {
+    private func cardFace(text: String, image: UIImage?, label: String) -> some View {
         VStack(spacing: 16) {
             Text(label)
                 .font(.caption.weight(.semibold))
@@ -33,6 +36,14 @@ struct FlashcardFlipView: View {
                 .multilineTextAlignment(.center)
                 .foregroundStyle(.primary)
 
+            if let image {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(maxHeight: 200)
+                    .clipShape(.rect(cornerRadius: 8))
+            }
+
             Spacer()
 
             if !isFlipped {
@@ -43,7 +54,7 @@ struct FlashcardFlipView: View {
         }
         .padding(24)
         .frame(maxWidth: .infinity)
-        .frame(height: 280)
+        .frame(minHeight: 280)
         .background(Color(.secondarySystemGroupedBackground))
         .clipShape(.rect(cornerRadius: 16))
         .shadow(color: .black.opacity(0.08), radius: 12, y: 4)

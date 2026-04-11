@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 @Observable
 @MainActor
@@ -61,8 +62,17 @@ class StudyDataStore {
         }
     }
 
-    func addCard(front: String, back: String, deck: String) {
-        let card = Card(front: front, back: back, deck: deck)
+    func addCard(front: String, back: String, deck: String,
+                 frontImage: UIImage? = nil, backImage: UIImage? = nil) {
+        var card = Card(front: front, back: back, deck: deck)
+        if let frontImage,
+           let name = ImageStorageService.saveImage(frontImage, cardId: card.id, side: .front) {
+            card.imageFront = name
+        }
+        if let backImage,
+           let name = ImageStorageService.saveImage(backImage, cardId: card.id, side: .back) {
+            card.imageBack = name
+        }
         cards.append(card)
         saveCards()
     }
@@ -75,15 +85,20 @@ class StudyDataStore {
         saveCards()
     }
 
-    func updateCard(_ card: Card, front: String, back: String, deck: String) {
+    func updateCard(_ card: Card, front: String, back: String, deck: String,
+                    imageFront: String?, imageBack: String?) {
         guard let index = cards.firstIndex(where: { $0.id == card.id }) else { return }
         cards[index].front = front
         cards[index].back = back
         cards[index].deck = deck
+        cards[index].imageFront = imageFront
+        cards[index].imageBack = imageBack
         saveCards()
     }
 
     func deleteCard(_ card: Card) {
+        ImageStorageService.deleteImage(cardId: card.id, side: .front)
+        ImageStorageService.deleteImage(cardId: card.id, side: .back)
         cards.removeAll { $0.id == card.id }
         reviewLogs.removeAll { $0.cardId == card.id }
         saveCards()
@@ -91,7 +106,12 @@ class StudyDataStore {
     }
 
     func deleteDeck(_ deckName: String) {
-        let cardIds = Set(cards.filter { $0.deck == deckName }.map(\.id))
+        let removedCards = cards.filter { $0.deck == deckName }
+        for c in removedCards {
+            ImageStorageService.deleteImage(cardId: c.id, side: .front)
+            ImageStorageService.deleteImage(cardId: c.id, side: .back)
+        }
+        let cardIds = Set(removedCards.map(\.id))
         cards.removeAll { $0.deck == deckName }
         reviewLogs.removeAll { cardIds.contains($0.cardId) }
         saveCards()
