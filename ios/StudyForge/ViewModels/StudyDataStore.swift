@@ -65,6 +65,7 @@ class StudyDataStore {
         let card = Card(front: front, back: back, deck: deck)
         cards.append(card)
         saveCards()
+        refreshReviewReminder()
     }
 
     func addCards(_ newCards: [(front: String, back: String)], deck: String) {
@@ -73,6 +74,7 @@ class StudyDataStore {
             cards.append(card)
         }
         saveCards()
+        refreshReviewReminder()
     }
 
     func updateCard(_ card: Card, front: String, back: String, deck: String) {
@@ -121,6 +123,7 @@ class StudyDataStore {
 
         saveCards()
         saveLogs()
+        refreshReviewReminder()
     }
 
     var totalCards: Int { cards.count }
@@ -264,6 +267,25 @@ class StudyDataStore {
 
     func courseForDeck(_ deckName: String) -> Course? {
         courses.first { $0.deckNames.contains(deckName) }
+    }
+
+    /// Number of cards whose nextReview falls at or before tomorrow 08:00 local.
+    /// Used to decide whether to schedule a morning reminder.
+    func dueByTomorrowMorning() -> Int {
+        let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: Date()) ?? Date()
+        var comps = Calendar.current.dateComponents([.year, .month, .day], from: tomorrow)
+        comps.hour = 8
+        comps.minute = 0
+        guard let cutoff = Calendar.current.date(from: comps) else {
+            return cards.filter { $0.nextReview <= DateHelper.nowMillis() }.count
+        }
+        let cutoffMillis = cutoff.timeIntervalSince1970 * 1000
+        return cards.filter { $0.nextReview <= cutoffMillis }.count
+    }
+
+    private func refreshReviewReminder() {
+        let count = dueByTomorrowMorning()
+        Task { await NotificationService.shared.rescheduleReviewReminder(dueCount: count) }
     }
 
     private func saveCards() {
