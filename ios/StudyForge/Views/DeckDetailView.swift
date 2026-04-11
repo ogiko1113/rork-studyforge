@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct DeckDetailView: View {
     @Environment(StudyDataStore.self) private var store
@@ -7,33 +8,40 @@ struct DeckDetailView: View {
     @State private var toastMessage: String?
 
     private var deckCards: [Card] {
-        store.cardsForDeck(deckName)
+        store.cardsForDeck(deckName).sorted { $0.nextReview < $1.nextReview }
+    }
+
+    private var dueCount: Int {
+        let now = DateHelper.nowMillis()
+        return deckCards.filter { $0.nextReview <= now }.count
     }
 
     var body: some View {
         List {
-            ForEach(deckCards) { card in
-                Button {
-                    editingCard = card
-                } label: {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(card.front)
-                            .font(.subheadline.weight(.medium))
-                            .foregroundStyle(.primary)
-                            .lineLimit(1)
-
-                        Text(card.back)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
-                    }
-                    .padding(.vertical, 2)
+            Section {
+                HStack(spacing: 16) {
+                    Label("\(deckCards.count)枚", systemImage: "rectangle.stack")
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Label("\(dueCount)枚 期限", systemImage: "clock")
+                        .foregroundStyle(dueCount > 0 ? AppColors.accent : .secondary)
                 }
-                .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                    Button(role: .destructive) {
-                        withAnimation { store.deleteCard(card) }
+                .font(.caption.weight(.medium))
+            }
+
+            Section {
+                ForEach(deckCards) { card in
+                    Button {
+                        editingCard = card
                     } label: {
-                        Label("削除", systemImage: "trash")
+                        cardRow(card: card)
+                    }
+                    .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                        Button(role: .destructive) {
+                            withAnimation { store.deleteCard(card) }
+                        } label: {
+                            Label("削除", systemImage: "trash")
+                        }
                     }
                 }
             }
@@ -54,48 +62,38 @@ struct DeckDetailView: View {
         }
         .toast(message: $toastMessage)
     }
-}
 
-struct CardEditSheet: View {
-    @Environment(StudyDataStore.self) private var store
-    @Environment(\.dismiss) private var dismiss
-    let card: Card
-    @State private var front: String
-    @State private var back: String
-
-    init(card: Card) {
-        self.card = card
-        _front = State(initialValue: card.front)
-        _back = State(initialValue: card.back)
-    }
-
-    var body: some View {
-        NavigationStack {
-            Form {
-                Section("表面（問題）") {
-                    TextField("問題を入力", text: $front, axis: .vertical)
-                        .lineLimit(3...6)
-                }
-                Section("裏面（答え）") {
-                    TextField("答えを入力", text: $back, axis: .vertical)
-                        .lineLimit(3...6)
-                }
+    private func cardRow(card: Card) -> some View {
+        let isDue = card.nextReview <= DateHelper.nowMillis()
+        return HStack(spacing: 10) {
+            if let name = card.imageFront,
+               let img = ImageStorageService.loadImage(filename: name) {
+                Image(uiImage: img)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: 40, height: 40)
+                    .clipShape(.rect(cornerRadius: 6))
             }
-            .navigationTitle("カードを編集")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("キャンセル") { dismiss() }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("保存") {
-                        store.updateCard(card, front: front, back: back, deck: card.deck,
-                                         imageFront: card.imageFront, imageBack: card.imageBack)
-                        dismiss()
-                    }
-                    .disabled(front.trimmingCharacters(in: .whitespaces).isEmpty || back.trimmingCharacters(in: .whitespaces).isEmpty)
-                }
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(card.front)
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+
+                Text(DateHelper.formatDateTime(card.nextReview))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer()
+
+            if isDue {
+                Circle()
+                    .fill(AppColors.accent)
+                    .frame(width: 8, height: 8)
             }
         }
+        .padding(.vertical, 2)
     }
 }

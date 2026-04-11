@@ -1,4 +1,6 @@
 import SwiftUI
+import UIKit
+import PhotosUI
 
 struct AddCardView: View {
     @Environment(StudyDataStore.self) private var store
@@ -10,6 +12,10 @@ struct AddCardView: View {
     @State private var back: String = ""
     @State private var bulkText: String = ""
     @State private var toastMessage: String?
+    @State private var frontPickerItem: PhotosPickerItem?
+    @State private var backPickerItem: PhotosPickerItem?
+    @State private var frontImage: UIImage?
+    @State private var backImage: UIImage?
     @FocusState private var frontFocused: Bool
 
     private var effectiveDeck: String {
@@ -139,6 +145,14 @@ struct AddCardView: View {
                     .lineLimit(3...6)
                     .textFieldStyle(.roundedBorder)
                     .focused($frontFocused)
+                imagePickerRow(
+                    image: frontImage,
+                    pickerItem: $frontPickerItem,
+                    onRemove: {
+                        frontImage = nil
+                        frontPickerItem = nil
+                    }
+                )
             }
 
             VStack(alignment: .leading, spacing: 6) {
@@ -148,6 +162,14 @@ struct AddCardView: View {
                 TextField("答えを入力", text: $back, axis: .vertical)
                     .lineLimit(3...6)
                     .textFieldStyle(.roundedBorder)
+                imagePickerRow(
+                    image: backImage,
+                    pickerItem: $backPickerItem,
+                    onRemove: {
+                        backImage = nil
+                        backPickerItem = nil
+                    }
+                )
             }
 
             Button {
@@ -162,6 +184,70 @@ struct AddCardView: View {
                     .clipShape(.rect(cornerRadius: 12))
             }
             .disabled(!canAddSingle)
+        }
+        .onChange(of: frontPickerItem) { _, newItem in
+            loadPickedImage(item: newItem) { img in
+                if let img { frontImage = img }
+            }
+        }
+        .onChange(of: backPickerItem) { _, newItem in
+            loadPickedImage(item: newItem) { img in
+                if let img { backImage = img }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func imagePickerRow(
+        image: UIImage?,
+        pickerItem: Binding<PhotosPickerItem?>,
+        onRemove: @escaping () -> Void
+    ) -> some View {
+        if let image {
+            HStack(spacing: 10) {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: 56, height: 56)
+                    .clipShape(.rect(cornerRadius: 8))
+
+                PhotosPicker(selection: pickerItem, matching: .images) {
+                    Text("変更")
+                        .font(.caption.weight(.medium))
+                }
+
+                Spacer()
+
+                Button {
+                    onRemove()
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.title3)
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.top, 4)
+        } else {
+            PhotosPicker(selection: pickerItem, matching: .images) {
+                Label("画像を追加", systemImage: "photo.badge.plus")
+                    .font(.caption.weight(.medium))
+            }
+            .padding(.top, 2)
+        }
+    }
+
+    private func loadPickedImage(item: PhotosPickerItem?, completion: @escaping @MainActor (UIImage?) -> Void) {
+        guard let item else { return }
+        Task {
+            let data = try? await item.loadTransferable(type: Data.self)
+            await MainActor.run {
+                if let data, let img = UIImage(data: data) {
+                    completion(img)
+                } else {
+                    completion(nil)
+                }
+            }
         }
     }
 
@@ -250,7 +336,13 @@ struct AddCardView: View {
 
         let deckName = effectiveDeck
         let wasNew = isNewDeck
-        store.addCard(front: trimFront, back: trimBack, deck: deckName)
+        store.addCard(
+            front: trimFront,
+            back: trimBack,
+            deck: deckName,
+            frontImage: frontImage,
+            backImage: backImage
+        )
 
         if wasNew && !selectedCourseId.isEmpty {
             store.addDeckToCourse(deckName, courseId: selectedCourseId)
@@ -258,6 +350,10 @@ struct AddCardView: View {
 
         front = ""
         back = ""
+        frontImage = nil
+        backImage = nil
+        frontPickerItem = nil
+        backPickerItem = nil
         toastMessage = "カードを追加しました"
         frontFocused = true
 
