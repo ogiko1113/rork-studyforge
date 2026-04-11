@@ -9,7 +9,7 @@ struct ContentView: View {
                 HomeView(selectedTab: $selectedTab)
             }
             Tab("復習", systemImage: "book.fill", value: 1) {
-                ReviewView()
+                ReviewView(selectedTab: $selectedTab)
             }
             Tab("追加", systemImage: "plus.circle.fill", value: 2) {
                 AddCardView()

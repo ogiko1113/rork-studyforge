@@ -3,12 +3,14 @@ import UIKit
 
 struct ReviewView: View {
     @Environment(StudyDataStore.self) private var store
+    @Binding var selectedTab: Int
     @State private var selectedDeck: String? = nil
     @State private var sessionCards: [Card] = []
     @State private var currentIndex: Int = 0
     @State private var isFlipped = false
-    @State private var reviewedCount: Int = 0
-    @State private var successCount: Int = 0
+    @State private var sessionGrades: [Int] = []
+    @State private var sessionStartTime: Date = Date()
+    @State private var sessionEndTime: Date?
     @State private var sessionFinished = false
     @State private var sessionStarted = false
     @State private var currentFrontImage: UIImage?
@@ -157,12 +159,12 @@ struct ReviewView: View {
     private func gradeCard(grade: Int) {
         guard let card = currentCard else { return }
         store.reviewCard(card, grade: grade)
-        reviewedCount += 1
-        if grade >= 3 { successCount += 1 }
+        sessionGrades.append(grade)
 
         isFlipped = false
 
         if currentIndex + 1 >= totalDue {
+            sessionEndTime = Date()
             withAnimation { sessionFinished = true }
         } else {
             currentIndex += 1
@@ -181,43 +183,144 @@ struct ReviewView: View {
     }
 
     private var completionView: some View {
-        VStack(spacing: 20) {
-            Spacer()
+        let totalReviewed = sessionGrades.count
+        let successCount = sessionGrades.filter { $0 >= 3 }.count
+        let successRate = totalReviewed > 0 ? Int((Double(successCount) / Double(totalReviewed) * 100).rounded()) : 0
+        let avgScore = totalReviewed > 0 ? Double(sessionGrades.reduce(0, +)) / Double(totalReviewed) : 0
+        let elapsed = (sessionEndTime ?? Date()).timeIntervalSince(sessionStartTime)
+        let elapsedSeconds = max(0, Int(elapsed))
+        let timeStr = String(format: "%02d:%02d", elapsedSeconds / 60, elapsedSeconds % 60)
 
-            Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: 64))
-                .foregroundStyle(AppColors.accent)
-                .symbolEffect(.bounce, value: sessionFinished)
+        return ScrollView {
+            VStack(spacing: 24) {
+                VStack(spacing: 10) {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 56))
+                        .foregroundStyle(AppColors.accent)
+                        .symbolEffect(.bounce, value: sessionFinished)
 
-            Text("お疲れ様！")
-                .font(.title.weight(.bold))
+                    Text("セッション完了！")
+                        .font(.title2.weight(.bold))
 
-            VStack(spacing: 8) {
-                Text("復習枚数: \(reviewedCount)枚")
-                    .font(.headline)
+                    Text(encouragementMessage(rate: successRate))
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.top, 24)
 
-                if reviewedCount > 0 {
-                    let rate = Int(Double(successCount) / Double(reviewedCount) * 100)
-                    Text("正答率: \(rate)%")
-                        .font(.headline)
-                        .foregroundStyle(rate >= 80 ? AppColors.mastered : rate >= 50 ? AppColors.learning : AppColors.gradeAgain)
+                Grid(horizontalSpacing: 12, verticalSpacing: 12) {
+                    GridRow {
+                        summaryCard(value: "\(totalReviewed)", unit: "枚", label: "復習枚数")
+                        summaryCard(value: "\(successRate)", unit: "%", label: "正答率")
+                    }
+                    GridRow {
+                        summaryCard(value: String(format: "%.1f", avgScore), unit: "", label: "平均スコア")
+                        summaryCard(value: timeStr, unit: "", label: "学習時間")
+                    }
+                }
+                .padding(.horizontal, 16)
+
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Grade分布")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal, 4)
+
+                    gradeDistributionView
+                }
+                .padding(.horizontal, 16)
+
+                Button {
+                    selectedTab = 0
+                } label: {
+                    Text("ホームに戻る")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 40)
+                        .padding(.vertical, 14)
+                        .background(AppColors.accent.gradient)
+                        .clipShape(.capsule)
+                }
+                .padding(.top, 8)
+                .padding(.bottom, 24)
+            }
+        }
+    }
+
+    private func encouragementMessage(rate: Int) -> String {
+        switch rate {
+        case 100: return "パーフェクト！🎉"
+        case 80...: return "素晴らしい！💪"
+        case 60...: return "いい調子です！👍"
+        default: return "継続は力なり！📚"
+        }
+    }
+
+    private func summaryCard(value: String, unit: String, label: String) -> some View {
+        VStack(spacing: 6) {
+            HStack(alignment: .lastTextBaseline, spacing: 2) {
+                Text(value)
+                    .font(.title.weight(.bold))
+                    .foregroundStyle(AppColors.accent)
+                    .monospacedDigit()
+                if !unit.isEmpty {
+                    Text(unit)
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(.secondary)
                 }
             }
+            Text(label)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 18)
+        .background(Color(.secondarySystemGroupedBackground))
+        .clipShape(.rect(cornerRadius: 12))
+    }
 
-            Button {
-                startSession()
-            } label: {
-                Text("もう一度")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 32)
-                    .padding(.vertical, 12)
-                    .background(AppColors.accent.gradient)
-                    .clipShape(.capsule)
+    private var gradeDistributionView: some View {
+        let counts = Dictionary(grouping: sessionGrades, by: { $0 }).mapValues(\.count)
+        let maxCount = counts.values.max() ?? 0
+
+        return VStack(spacing: 10) {
+            gradeBar(count: counts[1] ?? 0, max: maxCount, label: "もう一度", color: AppColors.gradeAgain)
+            gradeBar(count: counts[3] ?? 0, max: maxCount, label: "うろ覚え", color: AppColors.gradeHard)
+            gradeBar(count: counts[4] ?? 0, max: maxCount, label: "覚えた", color: AppColors.gradeGood)
+            gradeBar(count: counts[5] ?? 0, max: maxCount, label: "完璧", color: AppColors.gradeEasy)
+        }
+        .padding(16)
+        .background(Color(.secondarySystemGroupedBackground))
+        .clipShape(.rect(cornerRadius: 12))
+    }
+
+    private func gradeBar(count: Int, max: Int, label: String, color: Color) -> some View {
+        HStack(spacing: 12) {
+            Text(label)
+                .font(.caption.weight(.medium))
+                .foregroundStyle(.secondary)
+                .frame(width: 60, alignment: .leading)
+
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    RoundedRectangle(cornerRadius: 4)
+                        .fill(Color(.tertiarySystemGroupedBackground))
+                        .frame(height: 14)
+
+                    if max > 0 && count > 0 {
+                        RoundedRectangle(cornerRadius: 4)
+                            .fill(color)
+                            .frame(width: geo.size.width * CGFloat(count) / CGFloat(max), height: 14)
+                    }
+                }
             }
-            .padding(.top, 8)
+            .frame(height: 14)
 
-            Spacer()
+            Text("\(count)")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.primary)
+                .frame(width: 24, alignment: .trailing)
+                .monospacedDigit()
         }
     }
 
@@ -254,8 +357,9 @@ struct ReviewView: View {
         sessionCards = store.dueCards(for: selectedDeck)
         currentIndex = 0
         isFlipped = false
-        reviewedCount = 0
-        successCount = 0
+        sessionGrades = []
+        sessionStartTime = Date()
+        sessionEndTime = nil
         sessionFinished = false
         sessionStarted = true
         loadCurrentImages()
